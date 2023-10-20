@@ -4,7 +4,9 @@
 
 package frc.robot.subsystems;
 
-import edu.wpi.first.wpilibj.XboxController;
+import edu.wpi.first.wpilibj.AnalogPotentiometer;
+import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.motorcontrol.Talon;
 import edu.wpi.first.wpilibj2.command.CommandBase;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
@@ -13,17 +15,39 @@ import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
 public class ExampleSubsystem extends SubsystemBase {
 
-  private final CANSparkMax motor;
-  private final CANSparkMax motor2;
-  private final XboxController controller;
+  private final CANSparkMax flywheel;
+  private final CANSparkMax flywheel2;
+  private final Talon belts;
+
+  private final AnalogPotentiometer lower;
+  private final AnalogPotentiometer center;
+  private final AnalogPotentiometer upper;
+
+  private final double lowerSensorCutoff = 0.2;
+  private final double centerSensorCutoff = 0.2;
+  private final double upperSensorCutoff = 0.2;
+
+  boolean started = false;
+  Timer timer;
+
+  boolean[] ballStorage;
   
 
   /** Creates a new ExampleSubsystem. */
   public ExampleSubsystem() {
-    motor = new CANSparkMax(1, MotorType.kBrushless);
-    motor2 = new CANSparkMax(2, MotorType.kBrushless);
-    controller = new XboxController(0);
-    motor.follow(motor2);
+    flywheel = new CANSparkMax(3, MotorType.kBrushless);
+    flywheel2 = new CANSparkMax(16, MotorType.kBrushless);
+    flywheel2.follow(flywheel);
+    belts = new Talon(8);
+
+    lower = new AnalogPotentiometer(0);
+    center = new AnalogPotentiometer(1);
+    upper = new AnalogPotentiometer(2);
+
+
+    timer = new Timer();
+    
+    ballStorage = new boolean[]{false, false, false};
   }
 
 
@@ -57,8 +81,26 @@ public class ExampleSubsystem extends SubsystemBase {
 
   @Override
   public void periodic() {
-    // This method will be called once per scheduler run  
-    motor2.set(controller.getAButtonPressed() ? controller.getLeftTriggerAxis() / 2 : 0);
+    // This method will be called once per scheduler run
+    if (!started) {
+      started = true;
+      timer.start();
+    }
+
+    if (started && timer.hasElapsed(1)) {
+      System.out.println("\n\n");
+      System.out.println("Lower: " + lower.get());
+      System.out.println("Center: " + center.get());
+      System.out.println("Upper: " + upper.get());
+  
+      // Update Ball Storage
+      ballStorage[0] = upper.get() > upperSensorCutoff;
+      ballStorage[1] = center.get() > centerSensorCutoff;
+      ballStorage[2] = lower.get() > lowerSensorCutoff;
+
+      timer.restart();
+    }  
+
   }
 
   @Override
